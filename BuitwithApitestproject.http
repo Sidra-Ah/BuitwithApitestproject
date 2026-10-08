@@ -1,0 +1,6 @@
+@BuitwithApitestproject_HostAddress = http://localhost:5249
+
+GET {{BuitwithApitestproject_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
