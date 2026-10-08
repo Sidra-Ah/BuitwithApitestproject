@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Data Assistant</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            color: #1b1b24;
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            font: inherit;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #5b3fd1;
+            color: #fff;
+            font: inherit;
+            cursor: pointer;
+        }
+
+            button:disabled {
+                opacity: .5;
+                cursor: wait;
+            }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0eefb;
+        }
+
+        #answer {
+            white-space: pre-wrap;
+            background: #f7f7fb;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 14px;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Data Assistant</h1>
+
+    <h2>Dataset preview</h2>
+    <div id="preview">Loading...</div>
+
+    <h2>Ask a question</h2>
+    <textarea id="q" rows="4" placeholder="Example: Which category has the highest total value?"></textarea>
+    <p><button id="go">Ask Claude</button></p>
+    <div id="answer" aria-live="polite">The answer will appear here.</div>
+
+    <script>
+async function loadPreview() {
+  const box = document.getElementById('preview');
+  try {
+    const d = await (await fetch('/api/dataset')).json();
+    if (!d.columns.length) { box.textContent = 'No dataset found in /data.'; return; }
+    let h = '<p>' + d.count + ' rows</p><table><tr>' + d.columns.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+    for (const r of d.sample) h += '<tr>' + d.columns.map(c => '<td>' + r[c] + '</td>').join('') + '</tr>';
+    box.innerHTML = h + '</table>';
+  } catch (e) { box.textContent = 'Could not load dataset: ' + e.message; }
+}
+
+document.getElementById('go').onclick = async (ev) => {
+  const btn = ev.target, out = document.getElementById('answer');
+  const question = document.getElementById('q').value.trim();
+  if (!question) { out.textContent = 'Please type a question first.'; return; }
+  btn.disabled = true; out.textContent = 'Thinking...';
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    const d = await r.json();
+    out.textContent = r.ok ? d.answer : 'Error: ' + (d.detail || d.title || r.status);
+  } catch (e) { out.textContent = 'Network error: ' + e.message; }
+  btn.disabled = false;
+};
+
+loadPreview();
+    </script>
+</body>
+</html>
